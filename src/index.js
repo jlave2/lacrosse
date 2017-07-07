@@ -1,6 +1,14 @@
 import moment from 'moment'
-import { processData } from './api'
-import { drawChart } from './chart'
+import Store from './store'
+import Plot from './plot'
+// import { processData } from './api'
 
-processData({})
-drawChart()
+let store = new Store()
+let plot = null
+
+store.onLoaded(data => {
+  plot = new Plot(data)
+  plot.draw('sensor-plot')
+})
+
+store.update()

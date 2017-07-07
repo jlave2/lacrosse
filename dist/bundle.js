@@ -18861,8 +18861,8 @@ return zhTw;
 /***/ (function(module, exports, __webpack_require__) {
 
 /* MIT license */
-var convert = __webpack_require__(423);
-var string = __webpack_require__(425);
+var convert = __webpack_require__(425);
+var string = __webpack_require__(427);
 
 var Color = function (obj) {
 	if (obj instanceof Color) {
@@ -24240,14 +24240,27 @@ var _moment = __webpack_require__(0);
 
 var _moment2 = _interopRequireDefault(_moment);
 
-var _api = __webpack_require__(419);
+var _store = __webpack_require__(418);
 
-var _chart = __webpack_require__(418);
+var _store2 = _interopRequireDefault(_store);
+
+var _plot = __webpack_require__(421);
+
+var _plot2 = _interopRequireDefault(_plot);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-(0, _api.processData)({});
-(0, _chart.drawChart)();
+// import { processData } from './api'
+
+var store = new _store2.default();
+var plot = null;
+
+store.onLoaded(function (data) {
+  plot = new _plot2.default(data);
+  plot.draw('sensor-plot');
+});
+
+store.update();
 
 /***/ }),
 /* 416 */
@@ -24539,130 +24552,438 @@ webpackContext.id = 417;
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.drawChart = undefined;
 
-var drawChart = exports.drawChart = function () {
-  var _ref = _asyncToGenerator(regeneratorRuntime.mark(function _callee() {
-    var data, processedData, config, myChart;
-    return regeneratorRuntime.wrap(function _callee$(_context) {
-      while (1) {
-        switch (_context.prev = _context.next) {
-          case 0:
-            _context.next = 2;
-            return (0, _api.getObservations)();
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-          case 2:
-            data = _context.sent;
-            processedData = (0, _api.processData)(data);
-            config = {
-              type: 'line',
-              data: {
-                labels: processedData.dates,
-                datasets: [{
-                  label: 'Ambient temperature',
-                  backgroundColor: color(chartColors.red).alpha(0.5).rgbString(),
-                  borderColor: chartColors.red,
-                  fill: false,
-                  yAxisID: 'temp-axis',
-                  data: processedData.ambientTemps
-                }, {
-                  label: 'Probe temperature',
-                  backgroundColor: color(chartColors.blue).alpha(0.5).rgbString(),
-                  borderColor: chartColors.blue,
-                  fill: false,
-                  yAxisID: 'temp-axis',
-                  data: processedData.probeTemps
-                }, {
-                  label: 'Humidity',
-                  backgroundColor: color(chartColors.green).alpha(0.5).rgbString(),
-                  borderColor: chartColors.green,
-                  fill: false,
-                  yAxisID: 'humid-axis',
-                  data: processedData.humidities
-                }]
-              },
-              options: {
-                // elements: {
-                //   point: {
-                //     radius: 0
-                //   }
-                // },
-                tooltips: {
-                  mode: 'label'
-                },
-                title: {
-                  text: 'Sensor Data'
-                },
-                scales: {
-                  xAxes: [{
-                    type: 'time',
-                    time: {
-                      format: timeFormat,
-                      // round: 'day',
-                      tooltipFormat: timeFormat
-                    },
-                    scaleLabel: {
-                      display: true,
-                      labelString: 'Date'
-                    }
-                  }],
-                  yAxes: [{
-                    position: 'left',
-                    'id': 'temp-axis',
-                    scaleLabel: {
-                      display: true,
-                      labelString: 'Temperature (°F)'
-                    }
-                  }, {
-                    position: 'right',
-                    'id': 'humid-axis',
-                    scaleLabel: {
-                      display: true,
-                      labelString: 'Humidity (%)'
-                    }
-                  }]
-                }
-              }
-            };
-            myChart = new _chart2.default('myChart', config);
+var _events = __webpack_require__(419);
 
-          case 6:
-          case 'end':
-            return _context.stop();
-        }
-      }
-    }, _callee, this);
-  }));
+var _config = __webpack_require__(420);
 
-  return function drawChart() {
-    return _ref.apply(this, arguments);
-  };
-}();
-
-var _api = __webpack_require__(419);
-
-var _chart = __webpack_require__(420);
-
-var _chart2 = _interopRequireDefault(_chart);
+var _config2 = _interopRequireDefault(_config);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); }); }; }
 
-var timeFormat = 'M/D/YYYY h:mm A';
-var color = _chart2.default.helpers.color;
-var chartColors = {
-  red: 'rgb(255, 99, 132)',
-  orange: 'rgb(255, 159, 64)',
-  yellow: 'rgb(255, 205, 86)',
-  green: 'rgb(0, 128, 0)',
-  blue: 'rgb(54, 162, 235)',
-  purple: 'rgb(153, 102, 255)',
-  grey: 'rgb(201, 203, 207)'
-};
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+/* global fetch */
+
+var Store = function () {
+  function Store() {
+    _classCallCheck(this, Store);
+
+    // pull url from config file
+    this.url = _config2.default.url;
+    this.emitter = new _events.EventEmitter();
+    this.data = {};
+  }
+
+  _createClass(Store, [{
+    key: 'update',
+    value: function () {
+      var _ref = _asyncToGenerator(regeneratorRuntime.mark(function _callee() {
+        var res, json, formattedData;
+        return regeneratorRuntime.wrap(function _callee$(_context) {
+          while (1) {
+            switch (_context.prev = _context.next) {
+              case 0:
+                this.isUpdating = true;
+                _context.next = 3;
+                return fetch(this.url);
+
+              case 3:
+                res = _context.sent;
+                _context.next = 6;
+                return res.json();
+
+              case 6:
+                json = _context.sent;
+                formattedData = this.format(json.device0.obs);
+
+                this.setData(formattedData);
+                this.emitter.emit('loaded', formattedData);
+                return _context.abrupt('return', null);
+
+              case 11:
+              case 'end':
+                return _context.stop();
+            }
+          }
+        }, _callee, this);
+      }));
+
+      function update() {
+        return _ref.apply(this, arguments);
+      }
+
+      return update;
+    }()
+  }, {
+    key: 'format',
+    value: function format(data) {
+      var n = data.length;
+      var newData = {
+        dates: [],
+        ambientTemps: [],
+        probeTemps: [],
+        humidities: []
+      };
+      for (var i = 0; i < n; i += 50) {
+        newData.dates.push(data[i].timestamp);
+        newData.ambientTemps.push(data[i].ambient_temp);
+        newData.probeTemps.push(data[i].probe_temp);
+        newData.humidities.push(data[i].humidity);
+      }
+      return newData;
+    }
+  }, {
+    key: 'getData',
+    value: function getData() {
+      return this.data;
+    }
+  }, {
+    key: 'setData',
+    value: function setData(data) {
+      this.data = data;
+      return null;
+    }
+  }, {
+    key: 'onLoaded',
+    value: function onLoaded(callback) {
+      this.emitter.on('loaded', callback);
+    }
+  }]);
+
+  return Store;
+}();
+
+exports.default = Store;
 
 /***/ }),
 /* 419 */
+/***/ (function(module, exports) {
+
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+function EventEmitter() {
+  this._events = this._events || {};
+  this._maxListeners = this._maxListeners || undefined;
+}
+module.exports = EventEmitter;
+
+// Backwards-compat with node 0.10.x
+EventEmitter.EventEmitter = EventEmitter;
+
+EventEmitter.prototype._events = undefined;
+EventEmitter.prototype._maxListeners = undefined;
+
+// By default EventEmitters will print a warning if more than 10 listeners are
+// added to it. This is a useful default which helps finding memory leaks.
+EventEmitter.defaultMaxListeners = 10;
+
+// Obviously not all Emitters should be limited to 10. This function allows
+// that to be increased. Set to zero for unlimited.
+EventEmitter.prototype.setMaxListeners = function(n) {
+  if (!isNumber(n) || n < 0 || isNaN(n))
+    throw TypeError('n must be a positive number');
+  this._maxListeners = n;
+  return this;
+};
+
+EventEmitter.prototype.emit = function(type) {
+  var er, handler, len, args, i, listeners;
+
+  if (!this._events)
+    this._events = {};
+
+  // If there is no 'error' event listener then throw.
+  if (type === 'error') {
+    if (!this._events.error ||
+        (isObject(this._events.error) && !this._events.error.length)) {
+      er = arguments[1];
+      if (er instanceof Error) {
+        throw er; // Unhandled 'error' event
+      } else {
+        // At least give some kind of context to the user
+        var err = new Error('Uncaught, unspecified "error" event. (' + er + ')');
+        err.context = er;
+        throw err;
+      }
+    }
+  }
+
+  handler = this._events[type];
+
+  if (isUndefined(handler))
+    return false;
+
+  if (isFunction(handler)) {
+    switch (arguments.length) {
+      // fast cases
+      case 1:
+        handler.call(this);
+        break;
+      case 2:
+        handler.call(this, arguments[1]);
+        break;
+      case 3:
+        handler.call(this, arguments[1], arguments[2]);
+        break;
+      // slower
+      default:
+        args = Array.prototype.slice.call(arguments, 1);
+        handler.apply(this, args);
+    }
+  } else if (isObject(handler)) {
+    args = Array.prototype.slice.call(arguments, 1);
+    listeners = handler.slice();
+    len = listeners.length;
+    for (i = 0; i < len; i++)
+      listeners[i].apply(this, args);
+  }
+
+  return true;
+};
+
+EventEmitter.prototype.addListener = function(type, listener) {
+  var m;
+
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  if (!this._events)
+    this._events = {};
+
+  // To avoid recursion in the case that type === "newListener"! Before
+  // adding it to the listeners, first emit "newListener".
+  if (this._events.newListener)
+    this.emit('newListener', type,
+              isFunction(listener.listener) ?
+              listener.listener : listener);
+
+  if (!this._events[type])
+    // Optimize the case of one listener. Don't need the extra array object.
+    this._events[type] = listener;
+  else if (isObject(this._events[type]))
+    // If we've already got an array, just append.
+    this._events[type].push(listener);
+  else
+    // Adding the second element, need to change to array.
+    this._events[type] = [this._events[type], listener];
+
+  // Check for listener leak
+  if (isObject(this._events[type]) && !this._events[type].warned) {
+    if (!isUndefined(this._maxListeners)) {
+      m = this._maxListeners;
+    } else {
+      m = EventEmitter.defaultMaxListeners;
+    }
+
+    if (m && m > 0 && this._events[type].length > m) {
+      this._events[type].warned = true;
+      console.error('(node) warning: possible EventEmitter memory ' +
+                    'leak detected. %d listeners added. ' +
+                    'Use emitter.setMaxListeners() to increase limit.',
+                    this._events[type].length);
+      if (typeof console.trace === 'function') {
+        // not supported in IE 10
+        console.trace();
+      }
+    }
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+EventEmitter.prototype.once = function(type, listener) {
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  var fired = false;
+
+  function g() {
+    this.removeListener(type, g);
+
+    if (!fired) {
+      fired = true;
+      listener.apply(this, arguments);
+    }
+  }
+
+  g.listener = listener;
+  this.on(type, g);
+
+  return this;
+};
+
+// emits a 'removeListener' event iff the listener was removed
+EventEmitter.prototype.removeListener = function(type, listener) {
+  var list, position, length, i;
+
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  if (!this._events || !this._events[type])
+    return this;
+
+  list = this._events[type];
+  length = list.length;
+  position = -1;
+
+  if (list === listener ||
+      (isFunction(list.listener) && list.listener === listener)) {
+    delete this._events[type];
+    if (this._events.removeListener)
+      this.emit('removeListener', type, listener);
+
+  } else if (isObject(list)) {
+    for (i = length; i-- > 0;) {
+      if (list[i] === listener ||
+          (list[i].listener && list[i].listener === listener)) {
+        position = i;
+        break;
+      }
+    }
+
+    if (position < 0)
+      return this;
+
+    if (list.length === 1) {
+      list.length = 0;
+      delete this._events[type];
+    } else {
+      list.splice(position, 1);
+    }
+
+    if (this._events.removeListener)
+      this.emit('removeListener', type, listener);
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.removeAllListeners = function(type) {
+  var key, listeners;
+
+  if (!this._events)
+    return this;
+
+  // not listening for removeListener, no need to emit
+  if (!this._events.removeListener) {
+    if (arguments.length === 0)
+      this._events = {};
+    else if (this._events[type])
+      delete this._events[type];
+    return this;
+  }
+
+  // emit removeListener for all listeners on all events
+  if (arguments.length === 0) {
+    for (key in this._events) {
+      if (key === 'removeListener') continue;
+      this.removeAllListeners(key);
+    }
+    this.removeAllListeners('removeListener');
+    this._events = {};
+    return this;
+  }
+
+  listeners = this._events[type];
+
+  if (isFunction(listeners)) {
+    this.removeListener(type, listeners);
+  } else if (listeners) {
+    // LIFO order
+    while (listeners.length)
+      this.removeListener(type, listeners[listeners.length - 1]);
+  }
+  delete this._events[type];
+
+  return this;
+};
+
+EventEmitter.prototype.listeners = function(type) {
+  var ret;
+  if (!this._events || !this._events[type])
+    ret = [];
+  else if (isFunction(this._events[type]))
+    ret = [this._events[type]];
+  else
+    ret = this._events[type].slice();
+  return ret;
+};
+
+EventEmitter.prototype.listenerCount = function(type) {
+  if (this._events) {
+    var evlistener = this._events[type];
+
+    if (isFunction(evlistener))
+      return 1;
+    else if (evlistener)
+      return evlistener.length;
+  }
+  return 0;
+};
+
+EventEmitter.listenerCount = function(emitter, type) {
+  return emitter.listenerCount(type);
+};
+
+function isFunction(arg) {
+  return typeof arg === 'function';
+}
+
+function isNumber(arg) {
+  return typeof arg === 'number';
+}
+
+function isObject(arg) {
+  return typeof arg === 'object' && arg !== null;
+}
+
+function isUndefined(arg) {
+  return arg === void 0;
+}
+
+
+/***/ }),
+/* 420 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = {
+  url: 'http://decent-destiny-704.appspot.com/laxservices/device_info.php?deviceid=0001E529E85CCB26&limit=2016&timezone=2&metric=0'
+};
+
+/***/ }),
+/* 421 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -24672,80 +24993,129 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-/* eslint no-unused-vars: 0 */
-/* global fetch */
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var getObservations = exports.getObservations = function () {
-  var _ref = _asyncToGenerator(regeneratorRuntime.mark(function _callee() {
-    var res, json, obs;
-    return regeneratorRuntime.wrap(function _callee$(_context) {
-      while (1) {
-        switch (_context.prev = _context.next) {
-          case 0:
-            _context.next = 2;
-            return fetch(url);
+var _chart = __webpack_require__(422);
 
-          case 2:
-            res = _context.sent;
-            _context.next = 5;
-            return res.json();
+var _chart2 = _interopRequireDefault(_chart);
 
-          case 5:
-            json = _context.sent;
-            obs = json.device0.obs;
-            return _context.abrupt('return', obs);
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-          case 8:
-          case 'end':
-            return _context.stop();
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Plot = function () {
+  function Plot(data) {
+    _classCallCheck(this, Plot);
+
+    this.data = data;
+    this.timeFormat = 'M/D/YYYY h:mm A';
+    this.color = _chart2.default.helpers.color;
+    this.chartColors = {
+      red: 'rgb(255, 99, 132)',
+      orange: 'rgb(255, 159, 64)',
+      yellow: 'rgb(255, 205, 86)',
+      green: 'rgb(0, 128, 0)',
+      blue: 'rgb(54, 162, 235)',
+      purple: 'rgb(153, 102, 255)',
+      grey: 'rgb(201, 203, 207)'
+    };
+    this.options = {
+      type: 'line',
+      data: {
+        labels: this.data.dates,
+        datasets: [{
+          label: 'Ambient temperature',
+          backgroundColor: this.color(this.chartColors.red).alpha(0.5).rgbString(),
+          borderColor: this.chartColors.red,
+          fill: false,
+          yAxisID: 'temp-axis',
+          data: this.data.ambientTemps
+        }, {
+          label: 'Probe temperature',
+          backgroundColor: this.color(this.chartColors.blue).alpha(0.5).rgbString(),
+          borderColor: this.chartColors.blue,
+          fill: false,
+          yAxisID: 'temp-axis',
+          data: this.data.probeTemps
+        }, {
+          label: 'Humidity',
+          backgroundColor: this.color(this.chartColors.green).alpha(0.5).rgbString(),
+          borderColor: this.chartColors.green,
+          fill: false,
+          yAxisID: 'humid-axis',
+          data: this.data.humidities
+        }]
+      },
+      options: {
+        title: {
+          text: 'Sensor Data'
+        },
+        tooltips: {
+          mode: 'label'
+        },
+        scales: {
+          xAxes: [{
+            type: 'time',
+            time: {
+              format: this.timeFormat,
+              tooltipFormat: this.timeFormat
+            },
+            scaleLabel: {
+              display: true,
+              labelString: 'Date'
+            }
+          }],
+          yAxes: [{
+            position: 'left',
+            'id': 'temp-axis',
+            scaleLabel: {
+              display: true,
+              labelString: 'Temperature (°F)'
+            }
+          }, {
+            position: 'right',
+            'id': 'humid-axis',
+            scaleLabel: {
+              display: true,
+              labelString: 'Humidity (%)'
+            }
+          }]
         }
       }
-    }, _callee, this);
-  }));
+    };
 
-  return function getObservations() {
-    return _ref.apply(this, arguments);
-  };
+    return this;
+  }
+
+  _createClass(Plot, [{
+    key: 'draw',
+    value: function draw(id) {
+      return new _chart2.default(id, this.options);
+    }
+  }, {
+    key: 'updateData',
+    value: function updateData(data) {
+      this.data = data;
+      return null;
+    }
+  }]);
+
+  return Plot;
 }();
 
-exports.processData = processData;
-
-function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); }); }; }
-
-var url = 'http://decent-destiny-704.appspot.com/laxservices/device_info.php?deviceid=0001E529E85CCB26&limit=2016&timezone=2&metric=0';function processData(data) {
-  var dates = [];
-  var ambientTemps = [];
-  var probeTemps = [];
-  var humidities = [];
-  var n = data.length;
-  for (var i = 0; i < data.length; i += 50) {
-    dates.push(data[i].timestamp);
-    ambientTemps.push(data[i].ambient_temp);
-    probeTemps.push(data[i].probe_temp);
-    humidities.push(data[i].humidity);
-  }
-  var processedData = {
-    dates: dates,
-    ambientTemps: ambientTemps,
-    probeTemps: probeTemps,
-    humidities: humidities
-  };
-  return processedData;
-}
+exports.default = Plot;
 
 /***/ }),
-/* 420 */
+/* 422 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /**
  * @namespace Chart
  */
-var Chart = __webpack_require__(421)();
+var Chart = __webpack_require__(423)();
 
-__webpack_require__(422)(Chart);
-__webpack_require__(427)(Chart);
+__webpack_require__(424)(Chart);
 __webpack_require__(429)(Chart);
-__webpack_require__(430)(Chart);
 __webpack_require__(431)(Chart);
 __webpack_require__(432)(Chart);
 __webpack_require__(433)(Chart);
@@ -24756,43 +25126,45 @@ __webpack_require__(437)(Chart);
 __webpack_require__(438)(Chart);
 __webpack_require__(439)(Chart);
 __webpack_require__(440)(Chart);
-
 __webpack_require__(441)(Chart);
 __webpack_require__(442)(Chart);
+
 __webpack_require__(443)(Chart);
 __webpack_require__(444)(Chart);
-
 __webpack_require__(445)(Chart);
 __webpack_require__(446)(Chart);
+
 __webpack_require__(447)(Chart);
 __webpack_require__(448)(Chart);
 __webpack_require__(449)(Chart);
 __webpack_require__(450)(Chart);
+__webpack_require__(451)(Chart);
+__webpack_require__(452)(Chart);
 
 // Controllers must be loaded after elements
 // See Chart.core.datasetController.dataElementType
-__webpack_require__(451)(Chart);
-__webpack_require__(452)(Chart);
 __webpack_require__(453)(Chart);
 __webpack_require__(454)(Chart);
 __webpack_require__(455)(Chart);
 __webpack_require__(456)(Chart);
-
 __webpack_require__(457)(Chart);
 __webpack_require__(458)(Chart);
+
 __webpack_require__(459)(Chart);
 __webpack_require__(460)(Chart);
 __webpack_require__(461)(Chart);
 __webpack_require__(462)(Chart);
 __webpack_require__(463)(Chart);
+__webpack_require__(464)(Chart);
+__webpack_require__(465)(Chart);
 
 // Loading built-it plugins
 var plugins = [];
 
 plugins.push(
-    __webpack_require__(464)(Chart),
-    __webpack_require__(465)(Chart),
-    __webpack_require__(466)(Chart)
+    __webpack_require__(466)(Chart),
+    __webpack_require__(467)(Chart),
+    __webpack_require__(468)(Chart)
 );
 
 Chart.plugins.register(plugins);
@@ -24804,7 +25176,7 @@ if (typeof window !== 'undefined') {
 
 
 /***/ }),
-/* 421 */
+/* 423 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -24867,7 +25239,7 @@ module.exports = function() {
 
 
 /***/ }),
-/* 422 */
+/* 424 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -25858,10 +26230,10 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 423 */
+/* 425 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var conversions = __webpack_require__(424);
+var conversions = __webpack_require__(426);
 
 var convert = function() {
    return new Converter();
@@ -25955,7 +26327,7 @@ Converter.prototype.getValues = function(space) {
 module.exports = convert;
 
 /***/ }),
-/* 424 */
+/* 426 */
 /***/ (function(module, exports) {
 
 /* MIT license */
@@ -26659,11 +27031,11 @@ for (var key in cssKeywords) {
 
 
 /***/ }),
-/* 425 */
+/* 427 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* MIT license */
-var colorNames = __webpack_require__(426);
+var colorNames = __webpack_require__(428);
 
 module.exports = {
    getRgba: getRgba,
@@ -26886,7 +27258,7 @@ for (var name in colorNames) {
 
 
 /***/ }),
-/* 426 */
+/* 428 */
 /***/ (function(module, exports) {
 
 module.exports = {
@@ -27041,7 +27413,7 @@ module.exports = {
 };
 
 /***/ }),
-/* 427 */
+/* 429 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -27049,7 +27421,7 @@ module.exports = {
 
 // By default, select the browser (DOM) platform.
 // @TODO Make possible to select another platform at build time.
-var implementation = __webpack_require__(428);
+var implementation = __webpack_require__(430);
 
 module.exports = function(Chart) {
 	/**
@@ -27117,7 +27489,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 428 */
+/* 430 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -27407,7 +27779,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 429 */
+/* 431 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -27564,7 +27936,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 430 */
+/* 432 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -27690,7 +28062,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 431 */
+/* 433 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -28068,7 +28440,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 432 */
+/* 434 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -28243,7 +28615,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 433 */
+/* 435 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -29101,7 +29473,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 434 */
+/* 436 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -29438,7 +29810,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 435 */
+/* 437 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -29881,7 +30253,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 436 */
+/* 438 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -29932,7 +30304,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 437 */
+/* 439 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -30147,7 +30519,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 438 */
+/* 440 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -30911,7 +31283,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 439 */
+/* 441 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -31234,7 +31606,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 440 */
+/* 442 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -32179,7 +32551,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 441 */
+/* 443 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -32290,7 +32662,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 442 */
+/* 444 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -32384,7 +32756,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 443 */
+/* 445 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -32491,7 +32863,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 444 */
+/* 446 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -32706,7 +33078,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 445 */
+/* 447 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -32819,7 +33191,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 446 */
+/* 448 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -32958,7 +33330,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 447 */
+/* 449 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -33155,7 +33527,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 448 */
+/* 450 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -33408,7 +33780,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 449 */
+/* 451 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -33938,7 +34310,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 450 */
+/* 452 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -34387,7 +34759,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 451 */
+/* 453 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -34777,7 +35149,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 452 */
+/* 454 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -34906,7 +35278,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 453 */
+/* 455 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -35216,7 +35588,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 454 */
+/* 456 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -35556,7 +35928,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 455 */
+/* 457 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -35786,7 +36158,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 456 */
+/* 458 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -35960,7 +36332,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 457 */
+/* 459 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -35978,7 +36350,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 458 */
+/* 460 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -35995,7 +36367,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 459 */
+/* 461 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -36013,7 +36385,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 460 */
+/* 462 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -36031,7 +36403,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 461 */
+/* 463 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -36049,7 +36421,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 462 */
+/* 464 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -36067,7 +36439,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 463 */
+/* 465 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -36121,7 +36493,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 464 */
+/* 466 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -36437,7 +36809,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 465 */
+/* 467 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -36988,7 +37360,7 @@ module.exports = function(Chart) {
 
 
 /***/ }),
-/* 466 */
+/* 468 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
